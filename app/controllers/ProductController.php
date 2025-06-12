@@ -242,3 +242,4 @@ class ProductController
         include 'app/views/product/orderConfirmation.php';
     }
 }
+?>

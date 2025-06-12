@@ -14,9 +14,8 @@
                     </ul>
                 </div>
             <?php endif; ?>
-            <form method="POST" action="/2280618888_PhamTaManhLan_Bai2/product/update" enctype="multipart/form-data"
-                onsubmit="return validateForm();">
-                <input type="hidden" name="id" value="<?php echo $product->id; ?>">
+            <form id="edit-product-form" enctype="multipart/form-data">
+                <input type="hidden" id="id" name="id" value="<?php echo $product->id; ?>">
                 <div class="form-group mb-3">
                     <label for="name" class="fw-bold">Tên sản phẩm:</label>
                     <input type="text" id="name" name="name" class="form-control"
@@ -35,11 +34,7 @@
                 <div class="form-group mb-3">
                     <label for="category_id" class="fw-bold">Danh mục:</label>
                     <select id="category_id" name="category_id" class="form-control" required>
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?php echo $category->id; ?>" <?php echo $category->id == $product->category_id ? 'selected' : ''; ?>>
-                                <?php echo htmlspecialchars($category->name, ENT_QUOTES, 'UTF-8'); ?>
-                            </option>
-                        <?php endforeach; ?>
+                        <!-- Các danh mục sẽ được tải từ API và hiển thị tại đây -->
                     </select>
                 </div>
                 <div class="form-group mb-4">
@@ -62,3 +57,76 @@
     </div>
 </div>
 <?php include 'app/views/shares/footer.php'; ?>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const productId = <?php echo $product->id; ?>;
+        const categorySelect = document.getElementById('category_id');
+        const form = document.getElementById('edit-product-form');
+
+        // Tải thông tin sản phẩm từ API
+        fetch(`/2280618888_PhamTaManhLan_Bai2/api/product/${productId}`)
+            .then(response => {
+                if (!response.ok) throw new Error('Lỗi khi tải sản phẩm');
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('name').value = data.name || '';
+                document.getElementById('description').value = data.description || '';
+                document.getElementById('price').value = data.price || '';
+                // Cập nhật category_id sau khi tải danh mục
+            })
+            .catch(error => console.log('Lỗi khi tải sản phẩm:', error));
+
+        // Tải danh mục từ API
+        fetch('/2280618888_PhamTaManhLan_Bai2/api/category')
+            .then(response => {
+                if (!response.ok) throw new Error('Lỗi khi tải danh mục');
+                return response.json();
+            })
+            .then(data => {
+                data.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    if (category.id == <?php echo $product->category_id; ?>) {
+                        option.selected = true;
+                    }
+                    categorySelect.appendChild(option);
+                });
+            })
+            .catch(error => console.log('Lỗi khi tải danh mục:', error));
+
+        // Xử lý submit form
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+
+            // Sử dụng FormData trực tiếp để hỗ trợ file upload
+            fetch(`/2280618888_PhamTaManhLan_Bai2/api/product/${jsonData.id}`, {
+                method: 'PUT',
+                body: formData // Sử dụng FormData thay vì JSON để hỗ trợ file
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('Lỗi khi cập nhật sản phẩm');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message === 'Product updated successfully') {
+                        location.href = '/2280618888_PhamTaManhLan_Bai2/product';
+                    } else {
+                        alert('Cập nhật sản phẩm thất bại: ' + (data.message || 'Lỗi không xác định'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi:', error);
+                    alert('Lỗi: Không thể kết nối đến máy chủ.');
+                });
+        });
+    });
+</script>

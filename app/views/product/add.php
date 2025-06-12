@@ -14,8 +14,7 @@
                     </ul>
                 </div>
             <?php endif; ?>
-            <form method="POST" action="/2280618888_PhamTaManhLan_Bai2/product/save" enctype="multipart/form-data"
-                onsubmit="return validateForm();">
+            <form id="add-product-form" enctype="multipart/form-data">
                 <div class="form-group mb-3">
                     <label for="name" class="fw-bold">Tên sản phẩm:</label>
                     <input type="text" id="name" name="name" class="form-control" required>
@@ -31,11 +30,7 @@
                 <div class="form-group mb-3">
                     <label for="category_id" class="fw-bold">Danh mục:</label>
                     <select id="category_id" name="category_id" class="form-control" required>
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?php echo $category->id; ?>">
-                                <?php echo htmlspecialchars($category->name, ENT_QUOTES, 'UTF-8'); ?>
-                            </option>
-                        <?php endforeach; ?>
+                        <!-- Các danh mục sẽ được tải từ API và hiển thị tại đây -->
                     </select>
                 </div>
                 <div class="form-group mb-4">
@@ -51,3 +46,57 @@
     </div>
 </div>
 <?php include 'app/views/shares/footer.php'; ?>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const categorySelect = document.getElementById('category_id');
+
+        // Tải danh mục từ API
+        fetch('/2280618888_PhamTaManhLan_Bai2/api/category')
+            .then(response => {
+                if (!response.ok) throw new Error('Lỗi khi tải danh mục');
+                return response.json();
+            })
+            .then(data => {
+                data.forEach(category => {
+                    const option = document.createElement('option');
+                    option.value = category.id;
+                    option.textContent = category.name;
+                    categorySelect.appendChild(option);
+                });
+            })
+            .catch(error => console.log('Lỗi khi tải danh mục:', error));
+
+        // Xử lý submit form
+        document.getElementById('add-product-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const formData = new FormData(this);
+            const jsonData = {};
+            formData.forEach((value, key) => {
+                jsonData[key] = value;
+            });
+
+            // Chuyển FormData thành JSON, nhưng cần xử lý file riêng
+            fetch('/2280618888_PhamTaManhLan_Bai2/api/product', {
+                method: 'POST',
+                body: formData // Sử dụng FormData trực tiếp để hỗ trợ file upload
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error('Lỗi khi thêm sản phẩm');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.message === 'Product created successfully') {
+                        location.href = '/2280618888_PhamTaManhLan_Bai2/product';
+                    } else {
+                        alert('Thêm sản phẩm thất bại: ' + (data.message || 'Lỗi không xác định'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Lỗi:', error);
+                    alert('Lỗi: Không thể kết nối đến máy chủ.');
+                });
+        });
+    });
+</script>

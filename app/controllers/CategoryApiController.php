@@ -1,9 +1,7 @@
 <?php
-// Require SessionHelper and other necessary files
-require_once 'app/config/database.php';
-require_once 'app/models/CategoryModel.php';
-
-class CategoryController
+require_once('app/config/database.php');
+require_once('app/models/CategoryModel.php');
+class CategoryApiController
 {
     private $categoryModel;
     private $db;
@@ -12,10 +10,12 @@ class CategoryController
         $this->db = (new Database())->getConnection();
         $this->categoryModel = new CategoryModel($this->db);
     }
-    public function list()
+    // Lấy danh sách danh mục 
+    public function index()
     {
+        header('Content-Type: application/json');
         $categories = $this->categoryModel->getCategories();
-        include 'app/views/category/list.php';
+        echo json_encode($categories);
     }
 }
 ?>
