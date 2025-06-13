@@ -1,12 +1,16 @@
-<?php include 'app/views/shares/header.php'; ?>
 <?php
 // Kích hoạt session nếu chưa được kích hoạt
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
-// Bao gồm SessionHelper nếu nó chưa được tải
+// Bao gồm SessionHelper
 require_once 'app/helpers/SessionHelper.php';
+
+// Kiểm tra quyền admin và gán biến PHP
+$isAdmin = SessionHelper::isAdmin();
 ?>
+
+<?php include 'app/views/shares/header.php'; ?>
 
 <div class="content-wrapper mt-5 pt-5 pb-5">
     <div class="container">
@@ -14,17 +18,17 @@ require_once 'app/helpers/SessionHelper.php';
             <i class="fas fa-box-open mr-3"></i>Danh sách sản phẩm
         </h1>
 
-        <?php if (SessionHelper::isAdmin()): ?>
+        <?php if ($isAdmin): ?>
             <div class="text-center mb-5 animate__animated animate__fadeInUp">
                 <a href="/2280618888_PhamTaManhLan_Bai2/product/add"
-                    class="btn btn-success btn-lg shadow-lg add-product-btn">
+                   class="btn btn-success btn-lg shadow-lg add-product-btn">
                     <i class="fas fa-plus-circle mr-2"></i>Thêm sản phẩm mới
                 </a>
             </div>
         <?php endif; ?>
 
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4 justify-content-center"
-            id="product-list">
+             id="product-list">
             <!-- Danh sách sản phẩm sẽ được tải từ API và hiển thị tại đây -->
         </div>
     </div>
@@ -34,77 +38,117 @@ require_once 'app/helpers/SessionHelper.php';
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
-        fetch('/2280618888_PhamTaManhLan_Bai2/api/product')
-            .then(response => response.json())
-            .then(data => {
-                const productList = document.getElementById('product-list');
-                if (data.length === 0) {
-                    const noProduct = document.createElement('div');
-                    noProduct.className = 'col-12';
-                    noProduct.innerHTML = `
+        const token = localStorage.getItem('jwtToken');
+        if (!token) {
+            alert('Vui lòng đăng nhập để xem danh sách sản phẩm!');
+            location.href = '/2280618888_PhamTaManhLan_Bai2/account/login';
+            return;
+        }
+
+        fetch('http://localhost:90/2280618888_PhamTaManhLan_Bai2/api/product', {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            }
+        })
+        .then(response => {
+            console.log('Response status:', response.status); // Debug status
+            if (!response.ok) {
+                throw new Error(`Lỗi HTTP: ${response.status} - ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Data received:', data); // Debug dữ liệu
+            const productList = document.getElementById('product-list');
+            if (!Array.isArray(data) || data.length === 0) {
+                const noProduct = document.createElement('div');
+                noProduct.className = 'col-12';
+                noProduct.innerHTML = `
                     <div class="alert alert-info text-center shadow-sm animate__animated animate__zoomIn" role="alert">
                         <i class="fas fa-info-circle mr-2"></i>Không có sản phẩm nào để hiển thị. Vui lòng thêm sản phẩm mới!
                     </div>
                 `;
-                    productList.appendChild(noProduct);
-                } else {
-                    data.forEach(product => {
-                        const productCol = document.createElement('div');
-                        productCol.className = 'col mb-4 animate__animated animate__fadeInUp';
-                        productCol.innerHTML = `
+                productList.appendChild(noProduct);
+            } else {
+                data.forEach(product => {
+                    const productCol = document.createElement('div');
+                    productCol.className = 'col mb-4 animate__animated animate__fadeInUp';
+                    productCol.innerHTML = `
                         <div class="card h-100 shadow-lg border-0 rounded-lg product-card-hover">
                             ${product.image ? `<img src="/2280618888_PhamTaManhLan_Bai2/${product.image}" class="card-img-top product-thumbnail-image" alt="${product.name}">` : `<img src="https://via.placeholder.com/200x200?text=No+Image" class="card-img-top product-thumbnail-image" alt="No Image">`}
                             <div class="card-body d-flex flex-column">
                                 <h5 class="card-title text-truncate mb-2">
                                     <a href="/2280618888_PhamTaManhLan_Bai2/product/show/${product.id}" class="text-decoration-none text-dark font-weight-bold product-name-link" title="${product.name}">
-                                        ${product.name}
+                                        ${product.name || 'Tên không xác định'}
                                     </a>
                                 </h5>
-                                <p class="card-text text-muted small description-clamp mb-2">${product.description}</p>
-                                <p class="card-text mb-2"><strong>Giá: <span class="text-danger font-weight-bold price-text">${numberFormat(product.price)} VND</span></strong></p>
-                                <p class="card-text small text-secondary">Danh mục: <span class="font-weight-normal">${product.category_name}</span></p>
+                                <p class="card-text text-muted small description-clamp mb-2">${product.description || 'Chưa có mô tả'}</p>
+                                <p class="card-text mb-2"><strong>Giá: <span class="text-danger font-weight-bold price-text">${numberFormat(product.price || 0)} VND</span></strong></p>
+                                <p class="card-text small text-secondary">Danh mục: <span class="font-weight-normal">${product.category_name || 'Chưa có danh mục'}</span></p>
                                 <div class="mt-auto d-grid gap-2">
-                                    ${SessionHelper.isAdmin() ? `
+                                    <?php if ($isAdmin): ?>
                                         <a href="/2280618888_PhamTaManhLan_Bai2/product/edit/${product.id}" class="btn btn-outline-warning btn-sm product-action-btn"><i class="fas fa-edit mr-1"></i>Sửa</a>
                                         <button class="btn btn-outline-danger btn-sm product-action-btn" onclick="deleteProduct(${product.id})"><i class="fas fa-trash-alt mr-1"></i>Xóa</button>
-                                    ` : ''}
+                                    <?php endif; ?>
                                     <a href="/2280618888_PhamTaManhLan_Bai2/product/addToCart/${product.id}" class="btn btn-primary btn-sm add-to-cart-btn"><i class="fas fa-cart-plus mr-1"></i>Thêm vào giỏ hàng</a>
                                 </div>
                             </div>
                         </div>
                     `;
-                        productList.appendChild(productCol);
-                    });
-                }
-            })
-            .catch(error => console.log('Lỗi khi tải sản phẩm:', error));
+                    productList.appendChild(productCol);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Lỗi khi tải sản phẩm:', error);
+            const productList = document.getElementById('product-list');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'col-12';
+            errorDiv.innerHTML = `
+                <div class="alert alert-danger text-center shadow-sm animate__animated animate__zoomIn" role="alert">
+                    <i class="fas fa-exclamation-circle mr-2"></i>Lỗi khi tải danh sách sản phẩm. Vui lòng thử lại! (Chi tiết: ${error.message})
+                </div>
+            `;
+            productList.appendChild(errorDiv);
+        });
     });
 
-    // Hàm định dạng số (tạm thời, có thể thay bằng thư viện)
+    // Hàm định dạng số
     function numberFormat(number) {
         return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
 
+    // Hàm xóa sản phẩm
     function deleteProduct(id) {
         if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
-            fetch(`/2280618888_PhamTaManhLan_Bai2/api/product/${id}`, {
-                method: 'DELETE'
+            fetch(`http://localhost:90/2280618888_PhamTaManhLan_Bai2/api/product/${id}`, {
+                method: 'DELETE',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('jwtToken')
+                }
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message === 'Product deleted successfully') {
-                        location.reload(); // Có thể thay bằng cập nhật DOM động
-                    } else {
-                        alert('Xóa sản phẩm thất bại');
-                    }
-                })
-                .catch(error => console.log('Lỗi khi xóa sản phẩm:', error));
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Product deleted successfully') {
+                    location.reload();
+                } else {
+                    alert('Xóa sản phẩm thất bại: ' + (data.message || 'Lỗi không xác định'));
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi khi xóa sản phẩm:', error);
+                alert('Lỗi khi xóa sản phẩm. Vui lòng thử lại!');
+            });
         }
     }
 </script>
 
 <style>
-    /* Giữ nguyên CSS từ code của bạn */
     .content-wrapper {
         padding-top: 70px;
     }
@@ -248,7 +292,7 @@ require_once 'app/helpers/SessionHelper.php';
         margin-right: -0.75rem;
     }
 
-    .row.g-4>.col {
+    .row.g-4 > .col {
         padding-left: 0.75rem;
         padding-right: 0.75rem;
         padding-bottom: 1.5rem;
@@ -260,14 +304,14 @@ require_once 'app/helpers/SessionHelper.php';
     }
 
     @media (min-width: 768px) {
-        .row-cols-md-3>* {
+        .row-cols-md-3 > * {
             flex: 0 0 auto;
             width: 33.33333333%;
         }
     }
 
     @media (min-width: 992px) {
-        .row-cols-lg-4>* {
+        .row-cols-lg-4 > * {
             flex: 0 0 auto;
             width: 25%;
         }

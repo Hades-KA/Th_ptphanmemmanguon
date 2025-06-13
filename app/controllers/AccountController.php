@@ -1,14 +1,17 @@
 <?php 
 require_once('app/config/database.php'); 
 require_once('app/models/AccountModel.php'); 
+require_once('app/utils/JWTHandler.php'); // <-- Bổ sung dòng này để dùng JWT
 
 class AccountController { 
     private $accountModel; 
     private $db; 
+    private $jwtHandler; // <-- Thêm thuộc tính JWT
 
     public function __construct() { 
         $this->db = (new Database())->getConnection(); 
         $this->accountModel = new AccountModel($this->db); 
+        $this->jwtHandler = new JWTHandler(); // <-- Khởi tạo JWT
     } 
 
     public function register() { 
@@ -43,6 +46,7 @@ class AccountController {
                 include_once 'app/views/account/register.php'; 
                 return;
             } else { 
+                $password = password_hash($password, PASSWORD_BCRYPT); 
                 $result = $this->accountModel->save($username, $fullName, $password, $role); 
                 if ($result) { 
                     header('Location: /2280618888_PhamTaManhLan_Bai2/account/login'); 
@@ -64,6 +68,7 @@ class AccountController {
         exit; 
     } 
 
+    // Đăng nhập bằng FORM (session)
     public function checkLogin() { 
         if ($_SERVER['REQUEST_METHOD'] == 'POST') { 
             $username = $_POST['username'] ?? ''; 
@@ -90,6 +95,29 @@ class AccountController {
                 return;
             } 
         }
-    } 
+    }
+
+    // ✅ Đăng nhập API -> trả về JWT token nếu đúng
+    public function apiLogin() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents("php://input"), true);
+
+        $username = $data['username'] ?? '';
+        $password = $data['password'] ?? '';
+
+        $account = $this->accountModel->getAccountByUsername($username);
+
+        if ($account && password_verify($password, $account->password)) {
+            $token = $this->jwtHandler->encode([
+                'id' => $account->id,
+                'username' => $account->username,
+                'role' => $account->role
+            ]);
+            echo json_encode(['token' => $token]);
+        } else {
+            http_response_code(401);
+            echo json_encode(['message' => 'Thông tin đăng nhập không đúng']);
+        }
+    }
 }
 ?>

@@ -52,51 +52,58 @@
         const categorySelect = document.getElementById('category_id');
 
         // Tải danh mục từ API
-        fetch('/2280618888_PhamTaManhLan_Bai2/api/category')
-            .then(response => {
-                if (!response.ok) throw new Error('Lỗi khi tải danh mục');
-                return response.json();
-            })
-            .then(data => {
-                data.forEach(category => {
-                    const option = document.createElement('option');
-                    option.value = category.id;
-                    option.textContent = category.name;
-                    categorySelect.appendChild(option);
-                });
-            })
-            .catch(error => console.log('Lỗi khi tải danh mục:', error));
+        fetch('http://localhost:90/2280618888_PhamTaManhLan_Bai2/api/category', {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            console.log('Category response status:', response.status); // Debug
+            if (!response.ok) throw new Error('Lỗi khi tải danh mục');
+            return response.json();
+        })
+        .then(data => {
+            data.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categorySelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Lỗi khi tải danh mục:', error);
+            alert('Lỗi: Không thể tải danh mục. Vui lòng thử lại!');
+        });
 
         // Xử lý submit form
         document.getElementById('add-product-form').addEventListener('submit', function (event) {
             event.preventDefault();
 
-            const formData = new FormData(this);
-            const jsonData = {};
-            formData.forEach((value, key) => {
-                jsonData[key] = value;
-            });
+            const formData = new FormData(this); // Sử dụng FormData trực tiếp
 
-            // Chuyển FormData thành JSON, nhưng cần xử lý file riêng
-            fetch('/2280618888_PhamTaManhLan_Bai2/api/product', {
+            fetch('http://localhost:90/2280618888_PhamTaManhLan_Bai2/api/product', {
                 method: 'POST',
-                body: formData // Sử dụng FormData trực tiếp để hỗ trợ file upload
+                body: formData
             })
-                .then(response => {
-                    if (!response.ok) throw new Error('Lỗi khi thêm sản phẩm');
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.message === 'Product created successfully') {
-                        location.href = '/2280618888_PhamTaManhLan_Bai2/product';
-                    } else {
-                        alert('Thêm sản phẩm thất bại: ' + (data.message || 'Lỗi không xác định'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Lỗi:', error);
-                    alert('Lỗi: Không thể kết nối đến máy chủ.');
-                });
+            .then(response => {
+                console.log('Product response status:', response.status); // Debug
+                if (!response.ok) throw new Error('Lỗi khi thêm sản phẩm');
+                return response.json();
+            })
+            .then(data => {
+                if (data && data.message && data.message.includes('successfully')) {
+                    alert('Thêm sản phẩm thành công!');
+                    location.href = 'http://localhost:90/2280618888_PhamTaManhLan_Bai2/product';
+                } else {
+                    alert('Thêm sản phẩm thất bại: ' + (data.message || 'Lỗi không xác định'));
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi:', error);
+                alert('Lỗi: Không thể kết nối đến máy chủ. Chi tiết: ' + error.message);
+            });
         });
     });
 </script>
